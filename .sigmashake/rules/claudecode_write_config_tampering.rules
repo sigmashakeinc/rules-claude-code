@@ -1,0 +1,49 @@
+# claudecode_write_config_tampering.rules — Claude Code write/config tampering protection.
+# Technology: claudecode | Capability: write
+# Covers: hook script injection (CVE-2025-59536), credential storage writes,
+# settings modification, and CLAUDE.md prompt injection.
+
+rule no-write-claude-hooks {
+  enabled true
+  priority 100
+  severity error
+  DENY write
+  IF path REGEX "\\.claude/hooks/"
+  OR path REGEX "\\.claude/hooks\\."
+  OR path CONTAINS ".claude/hooks"
+  MESSAGE "CVE-2025-59536: Writing to .claude/hooks/ achieves RCE when Claude Code processes project configs. Researchers found it 'relatively easy for a bad actor to introduce a malicious Hook command in Claude Code's configuration file' that auto-executes when a developer opens the project. Hook files must be created manually by the developer, never by an AI agent."
+}
+
+rule no-write-claude-credentials {
+  enabled true
+  priority 100
+  severity error
+  DENY write
+  IF path CONTAINS ".claude/credentials"
+  OR path CONTAINS ".claude/auth"
+  OR path REGEX "\\.claude/.*token"
+  OR path REGEX "\\.claude/.*key"
+  MESSAGE "Writing to Claude Code credential storage blocked. CVE-2026-21852 (Claude Code versions prior to 2.0.65) allowed credential theft via malicious project configurations. Credentials are managed by the official CLI only."
+}
+
+rule ask-write-claude-settings {
+  enabled true
+  priority 85
+  severity warning
+  ASK write
+  IF path REGEX "\\.claude/settings"
+  OR path ENDS_WITH ".clauderc"
+  OR path REGEX "\\.claude/commands"
+  OR path REGEX "\\.claude/config"
+  MESSAGE "Writing Claude Code settings. Malicious settings can disable safety features, register unsafe hooks, or modify permission boundaries — as demonstrated in CVE-2025-59536. Verify changes before writing."
+  PROMPT "Review the settings content. Does it add hooks, modify permissions, enable dangerous commands, or disable safety features? These patterns are consistent with CVE-2025-59536 malicious project configs."
+}
+
+rule log-claudemd-write {
+  enabled true
+  priority 50
+  severity info
+  LOG write
+  IF path ENDS_WITH "CLAUDE.md"
+  MESSAGE "CLAUDE.md written. This file is injected into every Claude Code conversation. Malicious instructions or hidden Unicode in CLAUDE.md constitute a persistent prompt injection attack against all future sessions using this project."
+}

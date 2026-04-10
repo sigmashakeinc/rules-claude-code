@@ -1,0 +1,65 @@
+# claude-code_write_safety.rules
+# Technology: claude-code | Capability: write
+
+rule claude-code-insecure-deserialization-python {
+  enabled true
+  priority 95
+  severity error
+  DENY write
+  IF path GLOB "**/*.py" AND content CONTAINS "import pickle" AND content CONTAINS "pickle.loads("
+  MESSAGE "Potential insecure deserialization detected. Using 'pickle.loads()' with untrusted input can lead to arbitrary code execution. Consider safer data formats like JSON or YAML, or implement robust input validation and integrity checks if pickle is unavoidable for trusted data."
+}
+
+rule claude-code-sql-injection-fstring-python {
+  enabled true
+  priority 98
+  severity error
+  DENY write
+  IF path GLOB "**/*.py" AND content CONTAINS "cursor.execute(f\"SELECT" AND (content CONTAINS "{request." OR content CONTAINS "{user_input}" OR content CONTAINS "{data.")
+  MESSAGE "Potential SQL Injection via f-string detected. Directly embedding unsanitized user input (e.g., from 'request' object, 'user_input', or 'data') into SQL queries using f-strings is highly insecure. Use parameterized queries (e.g., 'cursor.execute(\"SELECT * FROM users WHERE id=?\", (user_id,))') to prevent injection attacks."
+}
+
+rule claude-code-hardcoded-api-key-python {
+  enabled true
+  priority 90
+  severity warning
+  ASK write
+  IF path GLOB "**/*.py" AND (content CONTAINS "API_KEY = \"sk-" OR content CONTAINS "SECRET_KEY = \"" OR content CONTAINS "PASSWORD = \"")
+  MESSAGE "Hardcoded sensitive credential detected (e.g., API key, secret key, password). Storing sensitive information directly in code is a severe security risk. Use environment variables (e.g., 'os.environ.get(\"API_KEY\")') or a secure secrets management system to handle credentials."
+}
+
+rule claude-code-deprecated-md5-hashing-python {
+  enabled true
+  priority 80
+  severity warning
+  ASK write
+  IF path GLOB "**/*.py" AND content CONTAINS "import hashlib" AND content CONTAINS "hashlib.md5("
+  MESSAGE "Use of MD5 for security-sensitive hashing detected. MD5 is cryptographically broken and unsuitable for password storage, digital signatures, or data integrity checks where collision resistance is required. Use stronger algorithms like 'hashlib.sha256', 'hashlib.sha3_256', 'bcrypt', 'scrypt', or 'argon2' for security purposes."
+}
+
+rule claude-code-insecure-command-execution-python {
+  enabled true
+  priority 92
+  severity error
+  DENY write
+  IF path GLOB "**/*.py" AND content CONTAINS "import os" AND content CONTAINS "os.system("
+  MESSAGE "Insecure command execution detected. 'os.system()' is deprecated and highly vulnerable to command injection if used with untrusted input. Prefer 'subprocess.run()' with 'shell=False' and a list of arguments for safer external command execution, ensuring all inputs are properly sanitized."
+}
+
+rule claude-code-path-traversal-nodejs {
+  enabled true
+  priority 96
+  severity error
+  DENY write
+  IF path GLOB "**/*.js" AND content CONTAINS "require('path')" AND content CONTAINS "path.join(" AND (content CONTAINS "req.query." OR content CONTAINS "req.params." OR content CONTAINS "req.body.")
+  MESSAGE "Potential Path Traversal vulnerability in Node.js. Concatenating unsanitized user input (from 'req.query', 'req.params', or 'req.body') directly into 'path.join()' can allow attackers to access arbitrary files outside the intended directory. Always sanitize and validate user input, or use 'path.resolve()' with a base directory and ensure the resolved path is strictly within the intended directory."
+}
+
+rule claude-code-google-style-wildcard-imports-python {
+  enabled true
+  priority 70
+  severity warning
+  ASK write
+  IF path GLOB "**/*.py" AND content CONTAINS "from " AND content CONTAINS " import *"
+  MESSAGE "Violation of 'claude-code' (Google-inspired) Python Style Guide: Wildcard import detected. Wildcard imports ('from module import *') make it difficult to determine where names come from, can lead to name collisions, and obscure dependencies. Prefer explicit imports (e.g., 'from module import func1, func2') or import the module directly (e.g., 'import module') and use 'module.func1' for clarity and maintainability."
+}

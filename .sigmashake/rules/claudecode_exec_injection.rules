@@ -1,0 +1,61 @@
+# claudecode_exec_injection.rules — Claude Code execution safety.
+# Technology: claudecode | Capability: exec
+# Covers: hook injection (CVE-2025-59536), command injection bypass,
+# source map exfiltration, safety rule cap, and config modification.
+
+rule no-claude-hook-execution {
+  enabled true
+  priority 100
+  severity error
+  DENY execution
+  IF command CONTAINS ".claude/hooks"
+  OR command REGEX "\\.claude/hooks/"
+  OR command REGEX "bash\\s+.*\\.claude.*\\.sh"
+  MESSAGE "CVE-2025-59536: Malicious .claude/hooks/ scripts achieve RCE when Claude Code processes project configs. Executing hook scripts from cloned project directories is blocked. Hooks must be managed manually in your personal ~/.claude/ config, never run by the agent."
+}
+
+rule no-bash-command-substitution-bypass {
+  enabled true
+  priority 95
+  severity error
+  DENY execution
+  IF command REGEX "\\$\\([^)]+\\)" AND command CONTAINS "claude"
+  OR command REGEX "`[^`]+`" AND command CONTAINS "claude"
+  OR command REGEX "\\$\\([^)]+\\)" AND command CONTAINS ".claude"
+  MESSAGE "Command substitution targeting Claude Code context detected. Attackers use nested command substitution to bypass regex-based command blacklists — a documented class of Claude Code safety bypass. Use explicit, fully-expanded commands without subshells."
+}
+
+rule no-node-source-map-exfil {
+  enabled true
+  priority 90
+  severity error
+  DENY execution
+  IF command CONTAINS "NODE_OPTIONS" AND command CONTAINS "source-map"
+  OR command CONTAINS "NODE_OPTIONS" AND command CONTAINS "enable-source-maps"
+  OR command REGEX "npm.*--inspect"
+  OR command REGEX "node.*--inspect"
+  MESSAGE "Source code exfiltration via npm debug source maps. In March 2026, Anthropic accidentally published a debug source map on npm that reconstructed 500,000+ lines of internal TypeScript. NODE_OPTIONS with source-map flags in production contexts is blocked."
+}
+
+rule ask-claude-config-directory-modify {
+  enabled true
+  priority 90
+  severity warning
+  ASK execution
+  IF command REGEX "mkdir.*\\.claude"
+  OR command REGEX "touch.*\\.claude"
+  OR command REGEX "chmod.*\\.claude"
+  OR command REGEX "(rm|rmdir).*\\.claude"
+  MESSAGE "Claude Code config directory modification. CVE-2025-59536 demonstrated RCE via malicious .claude/ configs in cloned repositories. Modifying the .claude/ directory structure requires human review."
+  PROMPT "Is this creating or modifying your personal Claude config, or modifying a .claude/ directory from a cloned repository? Project-level .claude/ from untrusted sources can contain malicious hooks."
+}
+
+rule log-rapid-sequential-commands {
+  enabled true
+  priority 70
+  severity info
+  LOG execution
+  IF command REGEX "^(ls|pwd|echo|date|whoami|id|env|printenv|uname)$"
+  OR command REGEX "^(ls|pwd|echo|date|whoami|id|env|printenv|uname)\\s"
+  MESSAGE "Simple reconnaissance command logged. Research (The Register, April 2026) shows Claude Code's safety rule cap can be overwhelmed by rapid sequential commands, causing safety rules to stop firing. Monitoring for volume anomalies."
+}
