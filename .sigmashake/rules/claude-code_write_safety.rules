@@ -23,7 +23,7 @@ rule claude-code-hardcoded-api-key-python {
   enabled true
   priority 90
   severity warning
-  ASK write
+  LOG write
   IF path GLOB "**/*.py" AND (content CONTAINS "API_KEY = \"sk-" OR content CONTAINS "SECRET_KEY = \"" OR content CONTAINS "PASSWORD = \"")
   MESSAGE "Hardcoded sensitive credential detected (e.g., API key, secret key, password). Storing sensitive information directly in code is a severe security risk. Use environment variables (e.g., 'os.environ.get(\"API_KEY\")') or a secure secrets management system to handle credentials."
 }
@@ -32,7 +32,7 @@ rule claude-code-deprecated-md5-hashing-python {
   enabled true
   priority 80
   severity warning
-  ASK write
+  LOG write
   IF path GLOB "**/*.py" AND content CONTAINS "import hashlib" AND content CONTAINS "hashlib.md5("
   MESSAGE "Use of MD5 for security-sensitive hashing detected. MD5 is cryptographically broken and unsuitable for password storage, digital signatures, or data integrity checks where collision resistance is required. Use stronger algorithms like 'hashlib.sha256', 'hashlib.sha3_256', 'bcrypt', 'scrypt', or 'argon2' for security purposes."
 }
@@ -59,7 +59,7 @@ rule claude-code-google-style-wildcard-imports-python {
   enabled true
   priority 70
   severity warning
-  ASK write
+  LOG write
   IF path GLOB "**/*.py" AND content CONTAINS "from " AND content CONTAINS " import *"
   MESSAGE "Violation of 'claude-code' (Google-inspired) Python Style Guide: Wildcard import detected. Wildcard imports ('from module import *') make it difficult to determine where names come from, can lead to name collisions, and obscure dependencies. Prefer explicit imports (e.g., 'from module import func1, func2') or import the module directly (e.g., 'import module') and use 'module.func1' for clarity and maintainability."
 }

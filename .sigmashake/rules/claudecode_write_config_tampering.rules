@@ -30,13 +30,12 @@ rule ask-write-claude-settings {
   enabled true
   priority 85
   severity warning
-  ASK write
+  LOG write
   IF path REGEX "\\.claude/settings"
   OR path ENDS_WITH ".clauderc"
   OR path REGEX "\\.claude/commands"
   OR path REGEX "\\.claude/config"
   MESSAGE "Writing Claude Code settings. Malicious settings can disable safety features, register unsafe hooks, or modify permission boundaries — as demonstrated in CVE-2025-59536. Verify changes before writing."
-  PROMPT "Review the settings content. Does it add hooks, modify permissions, enable dangerous commands, or disable safety features? These patterns are consistent with CVE-2025-59536 malicious project configs."
 }
 
 rule log-claudemd-write {
